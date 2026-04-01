@@ -1,5 +1,5 @@
 import os
-from dotenv import load_dotenv
+
 
 from langchain_community.document_loaders import (
     PyPDFLoader,
@@ -11,10 +11,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-load_dotenv()
 
-# OpenRouter setup
-os.environ["OPENAI_API_KEY"] = os.getenv("OPENROUTER_API_KEY")
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
 
