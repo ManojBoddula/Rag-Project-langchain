@@ -1,17 +1,17 @@
 import os
-
-
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     WebBaseLoader
 )
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
+import streamlit as st
+import os
 
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENROUTER_API_KEY"]
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
 
@@ -20,7 +20,7 @@ class RAG:
         self.vectorstore = None
         self.qa_chain = None
 
-    # ✅ FIXED LOAD DATA
+    
     def load_data(self, file_path=None, url=None):
         docs = []
 
@@ -77,7 +77,7 @@ class RAG:
         def qa(query):
             results = self.vectorstore.similarity_search_with_score(query, k=5)
 
-            # 🔥 RELAXED FILTER
+            # RELAXED FILTER
             filtered_docs = [doc for doc, score in results if score < 1.5]
 
             if not filtered_docs:
@@ -107,7 +107,7 @@ Question:
                 for doc in filtered_docs
             ])
 
-            return f"{response}\n\n📌 Sources:\n{sources}"
+            return f"{response}\n\n Sources:\n{sources}"
 
         self.qa_chain = qa
 
