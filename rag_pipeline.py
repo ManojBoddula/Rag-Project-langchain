@@ -79,7 +79,7 @@ class RAG:
                 search_kwargs={"k": 5}
             )
 
-            docs = retriever.get_relevant_documents(query)
+            docs = retriever.invoke(query)
 
             if not docs:
                 return "I don't know based on the provided data"
