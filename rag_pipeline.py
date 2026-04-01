@@ -1,4 +1,6 @@
 import os
+import streamlit as st
+
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
@@ -8,9 +10,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-import streamlit as st
-import os
-
+# ✅ OpenRouter config (Streamlit secrets)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENROUTER_API_KEY"]
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
@@ -20,8 +20,8 @@ class RAG:
         self.vectorstore = None
         self.qa_chain = None
 
-    
-    def load_data(self, file_path=None, url=None):
+    # 🔹 Load Data
+    def load_data(self, file_path=None, url=None, file_name=None):
         docs = []
 
         # FILE
@@ -36,7 +36,7 @@ class RAG:
             loaded_docs = loader.load()
 
             for doc in loaded_docs:
-                doc.metadata["source"] = file_path
+                doc.metadata["source"] = file_name if file_name else "uploaded_file"
 
             docs.extend(loaded_docs)
 
@@ -52,7 +52,7 @@ class RAG:
 
         return docs
 
-    # VECTOR DB
+    # 🔹 Vector Store
     def create_vectorstore(self, docs):
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=300,
@@ -67,23 +67,25 @@ class RAG:
 
         self.vectorstore = FAISS.from_documents(chunks, embeddings)
 
-    # QA SYSTEM
+    # 🔹 QA System (Low Hallucination + MMR)
     def setup_qa(self):
         llm = ChatOpenAI(
-            model="liquid/lfm-2.5-1.2b-thinking:free",
+            model="openai/gpt-3.5-turbo",  # ✅ stable model
             temperature=0
         )
 
         def qa(query):
-            results = self.vectorstore.similarity_search_with_score(query, k=5)
+            retriever = self.vectorstore.as_retriever(
+                search_type="mmr",
+                search_kwargs={"k": 5}
+            )
 
-            # RELAXED FILTER
-            filtered_docs = [doc for doc, score in results if score < 1.5]
+            docs = retriever.get_relevant_documents(query)
 
-            if not filtered_docs:
+            if not docs:
                 return "I don't know based on the provided data"
 
-            context = "\n".join([doc.page_content for doc in filtered_docs])
+            context = "\n".join([doc.page_content for doc in docs])
 
             prompt = f"""
 You are a strict AI assistant.
@@ -104,18 +106,18 @@ Question:
 
             sources = "\n".join([
                 str(doc.metadata.get("source", "unknown"))
-                for doc in filtered_docs
+                for doc in docs
             ])
 
-            return f"{response}\n\n Sources:\n{sources}"
+            return f"{response}\n\n📌 Sources:\n{sources}"
 
         self.qa_chain = qa
 
-    # BUILD PIPELINE
-    def build(self, file_path=None, url=None):
-        docs = self.load_data(file_path, url)
+    # 🔹 Build Pipeline
+    def build(self, file_path=None, url=None, file_name=None):
+        docs = self.load_data(file_path, url, file_name)
 
-        print("DEBUG: Loaded docs =", len(docs))  # helpful debug
+        print("DEBUG: Loaded docs =", len(docs))
 
         if not docs:
             raise ValueError("No data provided")
@@ -123,7 +125,7 @@ Question:
         self.create_vectorstore(docs)
         self.setup_qa()
 
-    # ASK
+    # 🔹 Ask
     def ask(self, query):
         if not self.qa_chain:
             return "Please build knowledge base first."
