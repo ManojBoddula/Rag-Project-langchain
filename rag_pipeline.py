@@ -69,7 +69,7 @@ class RAG:
     # 🔹 QA System (Low Hallucination + MMR)
     def setup_qa(self):
         llm = ChatOpenAI(
-            model="openai/gpt-3.5-turbo", 
+            model="qwen/qwen3.6-plus-preview:free", 
             temperature=0
         )
 
