@@ -10,7 +10,6 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-# ✅ OpenRouter config (Streamlit secrets)
 os.environ["OPENAI_API_KEY"] = st.secrets["OPENROUTER_API_KEY"]
 os.environ["OPENAI_API_BASE"] = "https://openrouter.ai/api/v1"
 
@@ -20,7 +19,7 @@ class RAG:
         self.vectorstore = None
         self.qa_chain = None
 
-    # 🔹 Load Data
+    # Load Data
     def load_data(self, file_path=None, url=None, file_name=None):
         docs = []
 
@@ -52,7 +51,7 @@ class RAG:
 
         return docs
 
-    # 🔹 Vector Store
+    # Vector Store
     def create_vectorstore(self, docs):
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=300,
@@ -70,7 +69,7 @@ class RAG:
     # 🔹 QA System (Low Hallucination + MMR)
     def setup_qa(self):
         llm = ChatOpenAI(
-            model="openai/gpt-3.5-turbo",  # ✅ stable model
+            model="openai/gpt-3.5-turbo", 
             temperature=0
         )
 
@@ -113,7 +112,7 @@ Question:
 
         self.qa_chain = qa
 
-    # 🔹 Build Pipeline
+    # Build Pipeline
     def build(self, file_path=None, url=None, file_name=None):
         docs = self.load_data(file_path, url, file_name)
 
@@ -125,7 +124,7 @@ Question:
         self.create_vectorstore(docs)
         self.setup_qa()
 
-    # 🔹 Ask
+    # Ask
     def ask(self, query):
         if not self.qa_chain:
             return "Please build knowledge base first."
