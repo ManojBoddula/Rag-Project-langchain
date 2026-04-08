@@ -3,62 +3,105 @@ import tempfile
 import os
 from rag_pipeline import RAG
 
-st.set_page_config(page_title="InsightBot", page_icon="🤖")
+st.set_page_config(page_title="RAG low Hallucination", layout="wide")
 
+# --- Session State Management ---
 if "rag" not in st.session_state:
     st.session_state.rag = RAG()
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "chat_active" not in st.session_state:
+    st.session_state.chat_active = True
 
-# Sidebar
+st.title("RAG low Hallucination")
+st.caption("Expert Chatbot ")
+
+# --- Sidebar Controls ---
 with st.sidebar:
-    st.title("Settings")
-    if st.button("Clear Conversation"):
+    st.header("App Controls")
+    if st.button("Reset Chat History", use_container_width=True):
         st.session_state.messages = []
+        st.session_state.chat_active = True
         st.rerun()
+    st.divider()
+    db_status = "Online" if st.session_state.rag.vectorstore else "Offline"
+    st.write(f"System Knowledge: **{db_status}**")
+
+# --- Main UI Tabs ---
+tab_setup, tab_chat = st.tabs(["Knowledge Setup", "Expert Chat"])
+
+with tab_setup:
+    st.subheader("Ingest Knowledge Sources")
+    c1, c2 = st.columns(2)
+    with c1:
+        f = st.file_uploader("Upload Python PDF/Doc", type=["pdf", "txt"], key="file_up")
+    with c2:
+        u = st.text_input("Enter Website URL", key="url_in")
     
-    st.header("Data Source")
-    up_file = st.file_uploader("Upload PDF", type=["pdf", "txt"])
-    site_url = st.text_input("Website URL")
-    
-    if st.button("Build Knowledge Base"):
-        if up_file or site_url:
-            with st.spinner("Building..."):
-                f_path = None
-                f_name = None
-                if up_file:
-                    f_name = up_file.name
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as t:
-                        t.write(up_file.read())
-                        f_path = t.name
-                
+    if st.button("Synchronize Database", use_container_width=True):
+        if f or u:
+            with st.status("Building Vector Database...", expanded=True) as s:
+                path, name = None, None
+                if f:
+                    name = f.name
+                    suffix = os.path.splitext(name)[1]
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                        tmp.write(f.read())
+                        path = tmp.name
                 try:
-                    st.session_state.rag.build(file_path=f_path, url=site_url, file_name=f_name)
-                    st.success("Success!")
+                    st.session_state.rag.build(path, u, name)
+                    s.update(label="Database Ready!", state="complete")
                 except Exception as e:
-                    st.error(f"Build Failed: {e}")
+                    st.error(f"Sync Failed: {e}")
+                finally:
+                    if path and os.path.exists(path): os.remove(path)
         else:
-            st.warning("Upload something first!")
+            st.warning("Please provide at least one source.")
 
-# Chat
-st.title("🤖 InsightBot RAG")
+# --- Chat Interface (Tab 2) ---
+with tab_chat:
+    # This container holds all the messages
+    chat_container = st.container()
+    
+    with chat_container:
+        for m in st.session_state.messages:
+            with st.chat_message(m["role"]):
+                st.markdown(m["content"])
+                if m.get("src"):
+                    with st.expander("Sources used"):
+                        for s in m["src"]: st.caption(s)
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-if prompt := st.chat_input("Ask about your data..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        # We pass only the content of previous messages to avoid recursive nesting
-        ans, sources = st.session_state.rag.ask(prompt, st.session_state.messages[:-1])
-        
-        display_text = ans
-        if sources:
-            display_text += "\n\n**Sources:**\n" + "\n".join([f"- {s}" for s in sources])
+    # The Input Box is placed AFTER the history container 
+    # to ensure it stays at the bottom of the "Expert Chat" tab.
+    if st.session_state.chat_active:
+        if query := st.chat_input("Ask about your data...", key="main_chat_input"):
             
-        st.markdown(display_text)
-        st.session_state.messages.append({"role": "assistant", "content": ans}) # Save only the text
+            # 1. Immediately show user message
+            with chat_container:
+                with st.chat_message("user"):
+                    st.markdown(query)
+            st.session_state.messages.append({"role": "user", "content": query})
+
+            # 2. Process Assistant response
+            with chat_container:
+                with st.chat_message("assistant"):
+                    with st.spinner("Thinking..."):
+                        ans, src = st.session_state.rag.ask(query)
+                        
+                        if ans == "EXIT_SIGNAL":
+                            final_msg = "Goodbye! Refresh the page or click 'Reset' to start a new session."
+                            st.info(final_msg)
+                            st.session_state.messages.append({"role": "assistant", "content": final_msg})
+                            st.session_state.chat_active = False
+                            st.rerun()
+                        else:
+                            st.markdown(ans)
+                            if src:
+                                with st.expander("Sources used"):
+                                    for s in src: st.caption(s)
+                            
+                            st.session_state.messages.append({
+                                "role": "assistant", "content": ans, "src": src
+                            })
+    else:
+        st.warning("Chat session ended. Please reset using the sidebar to chat again.")
