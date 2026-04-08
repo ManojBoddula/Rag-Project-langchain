@@ -31,13 +31,17 @@ class RAG:
         splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
         chunks = splitter.split_documents(docs)
         
-        # Lowered chunk_size for embeddings to prevent OpenRouter "No data" errors
+        # FIX: Added default_headers for OpenRouter compatibility on Streamlit Cloud
         embeddings = OpenAIEmbeddings(
             model="text-embedding-3-small",
             openai_api_key=st.secrets["OPENROUTER_API_KEY"],
             openai_api_base="https://openrouter.ai/api/v1",
             check_embedding_ctx_length=False,
             chunk_size=100, 
+            default_headers={
+                "HTTP-Referer": "https://streamlit.io", # Required by some OpenRouter providers
+                "X-Title": "Manoj Technical RAG"
+            }
         )
         
         if not chunks:
@@ -53,7 +57,10 @@ class RAG:
             max_tokens=1000, 
             openai_api_key=st.secrets["OPENROUTER_API_KEY"],
             openai_api_base="https://openrouter.ai/api/v1",
-            default_headers={"X-Title": "Manoj Technical RAG"}
+            default_headers={
+                "HTTP-Referer": "https://streamlit.io",
+                "X-Title": "Manoj Technical RAG"
+            }
         )
 
         def qa(query):
@@ -89,7 +96,7 @@ class RAG:
         if q in ["hi", "hello", "hey"]:
             return "Hello! Please upload your data in the Setup tab so I can assist you.", []
         if q in ["exit", "bye", "quit", "goodbye"]:
-            return "EXIT_SIGNAL", [] # Special signal for the UI
+            return "EXIT_SIGNAL", []
 
         if not self.vectorstore:
             return "Knowledge base is empty. Please use the 'Setup' tab.", []
