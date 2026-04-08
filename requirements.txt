@@ -1,0 +1,9 @@
+langchain
+langchain-community
+langchain-openai
+faiss-cpu
+streamlit
+python-dotenv
+pypdf
+beautifulsoup4
+requests
