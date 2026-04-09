@@ -23,7 +23,7 @@ with st.sidebar:
         st.rerun()
     st.divider()
     db_status = "Online" if st.session_state.rag.vectorstore else "Offline "
-    st.write(f"System Knowledge: **{db_status}**")
+    st.write(f"System Knowledge: {db_status}")
 
 tab_setup, tab_chat = st.tabs(["Knowledge Setup", "Expert Chat"])
 
@@ -31,9 +31,9 @@ with tab_setup:
     st.subheader("Ingest Knowledge Sources")
     c1, c2 = st.columns(2)
     with c1:
-        f = st.file_uploader("Upload Python PDF/Doc", type=["pdf", "txt"])
+        f = st.file_uploader("Upload PDF/Doc", type=["pdf", "txt"])
     with c2:
-        u = st.text_input("Enter ML Website URL")
+        u = st.text_input("Enter Website URL")
     
     if st.button("Synchronize Database", use_container_width=True):
         if f or u:
