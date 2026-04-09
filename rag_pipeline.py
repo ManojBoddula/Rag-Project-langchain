@@ -3,7 +3,8 @@ import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, WebBaseLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
+from langchain_huggingface import HuggingFaceEmbeddings
 
 class RAG:
     def __init__(self):
@@ -31,18 +32,7 @@ class RAG:
         splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=100)
         chunks = splitter.split_documents(docs)
         
-        # FIX: Added default_headers for OpenRouter compatibility on Streamlit Cloud
-        embeddings = OpenAIEmbeddings(
-            model="text-embedding-3-small",
-            openai_api_key=st.secrets["OPENROUTER_API_KEY"],
-            openai_api_base="https://openrouter.ai/api/v1",
-            check_embedding_ctx_length=False,
-            chunk_size=100, 
-            default_headers={
-                "HTTP-Referer": "https://streamlit.io", # Required by some OpenRouter providers
-                "X-Title": "Manoj Technical RAG"
-            }
-        )
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
         
         if not chunks:
             raise ValueError("No text chunks created. Check your data sources.")
@@ -50,6 +40,7 @@ class RAG:
         self.vectorstore = FAISS.from_documents(chunks, embeddings)
 
     def setup_qa(self):
+
         model_id = "nvidia/nemotron-3-super-120b-a12b:free" 
         llm = ChatOpenAI(
             model=model_id, 
