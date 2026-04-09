@@ -60,15 +60,24 @@ class RAG:
             context = "\n".join([d.page_content for d in docs])
             sources = list(set([str(d.metadata.get("source", "Unknown")) for d in docs]))
 
-            prompt = f"""You are a Technical Expert specializing in Python and Machine Learning.
-            TASK: Use the Context below to explain the concepts. 
+            # SYSTEM PROMPT
+            prompt = f"""You are a Knowledge Assistant. Your goal is to provide accurate explanations based ONLY on the provided Context.
+            
+            TASK: 
+            Analyze the Context below which contains information from multiple sources. 
+            Synthesize a comprehensive answer that combines relevant details from all sources provided.
+
             RULES:
             1. Use bullet points for readability. (No bolding in final explanation).
-            2. If the answer is not in the context, say: "I'm sorry, my current database doesn't contain information about that specific topic."
-            3. Do not mention "the context" specifically.
+            2. If the answer is not in the context, say: "I'm sorry, my current database doesn't contain information about that specific topic. I can only answer based on the uploaded data."
+            3. Do not mention "the context" or "the documents" specifically; speak naturally.
+            4. If the data covers multiple topics, provide a structured summary of how they relate.
 
-            Context: {context}
+            Context:
+            {context}
+
             Question: {query}
+            
             Expert Explanation:"""
             
             response = llm.invoke(prompt).content
